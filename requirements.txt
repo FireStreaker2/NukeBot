@@ -1,0 +1,4 @@
+discord.py
+asyncio
+python-dotenv
+requests
