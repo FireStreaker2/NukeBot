@@ -12,9 +12,9 @@ import inspect
 load_dotenv()
 
 config = {
-    "Prefix": ".",
-    "Status": os.getenv("STATUS", "your server"),
     "Token": os.getenv("TOKEN"),
+    "Prefix": os.getenv("PREFIX", "."),
+    "Status": os.getenv("STATUS", "your server"),
 }
 
 # intents
